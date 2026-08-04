@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#09101e">
+  <meta name="description" content="物理演算で歪み、跳ね、積み上がる落ち物パズル TINT をブラウザで遊べます。">
+  <title>TINT — TINT is not Tetris</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #09101e;
+      --surface: #101a2c;
+      --line: #293956;
+      --text: #e8efff;
+      --muted: #91a0c5;
+      --accent: #55d6be;
+      --gold: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--background); }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 50% 8%, #172543 0, transparent 36rem),
+        var(--background);
+      font-family: Inter, "Segoe UI", "Yu Gothic UI", sans-serif;
+      line-height: 1.65;
+    }
+
+    a { color: var(--accent); }
+    a:hover { color: #b8fff1; }
+
+    .topbar {
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 10px max(18px, calc((100vw - 1120px) / 2));
+      border-bottom: 1px solid var(--line);
+      background: rgb(9 16 30 / 82%);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand { display: flex; align-items: baseline; gap: 12px; }
+    .brand h1 { margin: 0; font-size: 1.05rem; letter-spacing: .24em; }
+    .brand span { color: var(--muted); font-size: .76rem; }
+
+    .topbar nav { display: flex; gap: 18px; font-size: .82rem; }
+
+    .game-wrap {
+      width: min(calc(100% - 32px), 720px);
+      margin: 0 auto;
+      padding: 20px 0 28px;
+    }
+
+    .game-shell {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+      border: 1px solid #35496d;
+      border-radius: 14px;
+      background: #090c13;
+      box-shadow: 0 24px 80px rgb(0 0 0 / 44%);
+    }
+
+    .game-frame { display: block; width: 100%; height: 100%; border: 0; }
+
+    main { border-top: 1px solid var(--line); background: rgb(9 16 30 / 74%); }
+
+    .content {
+      width: min(calc(100% - 36px), 920px);
+      margin: 0 auto;
+      padding: 38px 0 58px;
+    }
+
+    .intro { max-width: 700px; margin: 0 0 34px; color: var(--muted); }
+
+    .sections {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0 42px;
+    }
+
+    section { padding: 22px 0; border-top: 1px solid var(--line); }
+    section h2 { margin: 0 0 12px; color: var(--accent); font-size: .9rem; }
+    section p, section ul { margin: 0; color: var(--muted); font-size: .9rem; }
+    section ul { padding-left: 1.2rem; }
+    section li + li { margin-top: 5px; }
+    code { color: var(--gold); font-family: "Cascadia Mono", Consolas, monospace; }
+
+    footer {
+      padding: 21px 18px 32px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .78rem;
+      text-align: center;
+    }
+
+    @media (max-width: 680px) {
+      .topbar { align-items: flex-start; flex-direction: column; gap: 3px; }
+      .brand span { display: none; }
+      .game-wrap { width: 100%; padding: 0 0 20px; }
+      .game-shell { border-left: 0; border-right: 0; border-radius: 0; }
+      .sections { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><h1>TINT</h1><span>TINT is not Tetris</span></div>
+    <nav aria-label="プロジェクトリンク">
+      <a href="https://github.com/yos-gh/tint">Source</a>
+    </nav>
+  </header>
+
+  <div class="game-wrap">
+    <div class="game-shell">
+      <iframe
+        class="game-frame"
+        src="game/index.html"
+        title="TINT game"
+        allow="autoplay; fullscreen; gamepad"
+        allowfullscreen
+      ></iframe>
+    </div>
+  </div>
+
+  <main>
+    <div class="content">
+      <p class="intro">
+        TINTは、ゴムのような紐でつながった石を物理演算で積み上げる落ち物パズルです。
+        ブロックは歪み、跳ね、任意の角度で回転します。左右の壁を同じ高さで石が結ぶと、その線上の石が消えます。
+      </p>
+
+      <div class="sections">
+        <section>
+          <h2>操作</h2>
+          <ul>
+            <li>移動: <code>A / D</code> または左右矢印</li>
+            <li>落下加速: <code>S</code> または下矢印</li>
+            <li>反時計回り: <code>N</code></li>
+            <li>時計回り: <code>M</code></li>
+            <li>再開: ゲームオーバー後に <code>R</code></li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>消去ルール</h2>
+          <p>
+            左右の壁にほぼ同じ高さで接する石を結び、その近傍が十分な数の石で埋まると消去されます。
+            あと1石で成立する線は金色に発光します。
+          </p>
+        </section>
+
+        <section>
+          <h2>スコア</h2>
+          <p>
+            高い位置で消すほど危険度倍率が上がります。底面では1倍、ゲームオーバーに近い最上部では16倍です。
+          </p>
+        </section>
+
+        <section>
+          <h2>Prototype</h2>
+          <p>
+            Godot 4で制作中のプロトタイプです。物理挙動、難易度、消去条件は今後も調整される可能性があります。
+          </p>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>TINT — browser prototype</footer>
+</body>
+</html>
+
