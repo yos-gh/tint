@@ -14,6 +14,10 @@ config/name="TINT"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7")
 
+[debug]
+
+settings/gdscript/always_track_call_stacks=true
+
 [display]
 
 window/size/viewport_width=720
@@ -31,3 +35,9 @@ window/stretch/mode="canvas_items"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.035, 0.047, 0.075, 1)
+
+[sentry]
+
+options/attach_log=false
+options/dsn="https://da180a60f3dbf5571efbcb0072afd236@o4511784787771392.ingest.us.sentry.io/4511853665386496"
+schema_version=4

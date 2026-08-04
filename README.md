@@ -52,3 +52,15 @@ godot --path C:\Users\ysyki\Projects\tint
 回転操作は現在位置へ接線力を加える方式ではなく、元形状を固定半径のまま目標角度へ進める方式です。衝突で形が大きく崩れた場合は回転を一時停止して復元を優先します。接地後は形状記憶力を受動的な強さへ下げ、積み石同士が能動的に跳ね返し合うのを抑えています。
 
 形状記憶はブロック内部の拘束として合力が常にゼロになるよう補正されます。回転中に接触反力で重心へ上向き速度が生じた場合も、その並進成分だけを除き、落下を妨げないようにしています。
+
+## エラー監視
+
+[Sentry for Godot](https://github.com/getsentry/sentry-godot) 2.1.1を`addons/sentry`へ同梱し、起動時に自動初期化します。DSNは`project.godot`の`sentry/options/dsn`で設定し、標準の個人識別情報送信は無効にしています。
+
+WebエクスポートではGDExtension対応を有効にし、SentryのJavaScriptブリッジを自動挿入します。SDKを更新する場合は、公式Releasesから新しい`addons/sentry`を取得してください。
+
+接続確認を明示的に行う場合だけ、次のスモークテストを実行します。`Hello, World!`イベントを実際のSentryプロジェクトへ1件送信するため、通常のテスト一式には含めていません。
+
+```powershell
+godot --headless --path . --script res://tests/sentry_smoke.gd
+```
