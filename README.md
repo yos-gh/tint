@@ -56,3 +56,7 @@ godot --headless --path . --export-release Web web/game/index.html
 The playable build is written to `web/game`. The Sentry monitoring extension
 and its Web support files are included in the repository, so no additional SDK
 installation is required.
+
+## License
+
+TINT is released under the [MIT License](LICENSE).
