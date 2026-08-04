@@ -21,6 +21,12 @@ const CLEAR_BAND_HALF_WIDTH := STONE_SIZE * 0.45
 const MOVE_FORCE := 2750.0
 const SOFT_DROP_FORCE := 2800.0
 const TARGET_ROTATION_SPEED := TAU # One full turn per second.
+const GAMEPAD_DEADZONE := 0.28
+const INPUT_MOVE_LEFT := "gamepad_move_left"
+const INPUT_MOVE_RIGHT := "gamepad_move_right"
+const INPUT_DROP := "gamepad_drop"
+const INPUT_ROTATE_LEFT := "gamepad_rotate_left"
+const INPUT_ROTATE_RIGHT := "gamepad_rotate_right"
 
 # Shape springs use the upper end of Godot's practical stiffness range.
 # The weaker all-pair support springs resist folding while still allowing
@@ -86,6 +92,7 @@ var is_started := false
 
 func _ready() -> void:
 	randomize()
+	_configure_gamepad_input()
 	_build_world()
 	_build_ui()
 	_build_start_overlay()
@@ -93,9 +100,53 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
-	if not is_started and event is InputEventKey and event.pressed and not event.echo:
+	var keyboard_start: bool = event is InputEventKey and event.pressed and not event.echo
+	var button_start: bool = event is InputEventJoypadButton and event.pressed
+	var stick_start: bool = event is InputEventJoypadMotion and absf(event.axis_value) >= 0.5
+	if not is_started and (keyboard_start or button_start or stick_start):
 		start_game()
 		get_viewport().set_input_as_handled()
+
+
+func _configure_gamepad_input() -> void:
+	_add_gamepad_axis(INPUT_MOVE_LEFT, JOY_AXIS_LEFT_X, -1.0)
+	_add_gamepad_button(INPUT_MOVE_LEFT, JOY_BUTTON_DPAD_LEFT)
+	_add_gamepad_axis(INPUT_MOVE_RIGHT, JOY_AXIS_LEFT_X, 1.0)
+	_add_gamepad_button(INPUT_MOVE_RIGHT, JOY_BUTTON_DPAD_RIGHT)
+	_add_gamepad_axis(INPUT_DROP, JOY_AXIS_LEFT_Y, 1.0)
+	_add_gamepad_button(INPUT_DROP, JOY_BUTTON_DPAD_DOWN)
+	_add_gamepad_button(INPUT_ROTATE_LEFT, JOY_BUTTON_A)
+	_add_gamepad_button(INPUT_ROTATE_LEFT, JOY_BUTTON_X)
+	_add_gamepad_button(INPUT_ROTATE_RIGHT, JOY_BUTTON_B)
+	_add_gamepad_button(INPUT_ROTATE_RIGHT, JOY_BUTTON_Y)
+
+
+func _ensure_gamepad_action(action: StringName) -> void:
+	if not InputMap.has_action(action):
+		InputMap.add_action(action, GAMEPAD_DEADZONE)
+
+
+func _add_gamepad_button(action: StringName, button: JoyButton) -> void:
+	_ensure_gamepad_action(action)
+	for existing in InputMap.action_get_events(action):
+		if existing is InputEventJoypadButton and existing.button_index == button:
+			return
+	var event := InputEventJoypadButton.new()
+	event.button_index = button
+	InputMap.action_add_event(action, event)
+
+
+func _add_gamepad_axis(action: StringName, axis: JoyAxis, direction: float) -> void:
+	_ensure_gamepad_action(action)
+	for existing in InputMap.action_get_events(action):
+		if existing is InputEventJoypadMotion \
+				and existing.axis == axis \
+				and signf(existing.axis_value) == signf(direction):
+			return
+	var event := InputEventJoypadMotion.new()
+	event.axis = axis
+	event.axis_value = direction
+	InputMap.action_add_event(action, event)
 
 
 func start_game() -> void:
@@ -185,7 +236,7 @@ func _build_ui() -> void:
 	add_child(status_label)
 
 	help_label = Label.new()
-	help_label.text = "A / D or ← / →  MOVE     S or ↓  DROP     N / M  ROTATE"
+	help_label.text = "KEYS  A/D  S  N/M     PAD  D-PAD/STICK  A/X  B/Y"
 	help_label.position = Vector2(70, 926)
 	help_label.size = Vector2(580, 24)
 	help_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -208,10 +259,10 @@ func _build_start_overlay() -> void:
 	start_overlay.add_child(start_title)
 	var start_subtitle := _start_label("TINT is not Tetris", Vector2(0, 345), Vector2(720, 34), 18, Color("8292b8"))
 	start_overlay.add_child(start_subtitle)
-	var prompt := _start_label("PRESS ANY KEY", Vector2(0, 470), Vector2(720, 50), 24, Color("fff3c4"))
+	var prompt := _start_label("PRESS ANY KEY OR BUTTON", Vector2(0, 470), Vector2(720, 50), 24, Color("fff3c4"))
 	start_overlay.add_child(prompt)
 	var controls := _start_label(
-		"A / D  MOVE     S  DROP     N / M  ROTATE",
+		"KEYS  A/D  S  N/M     PAD  D-PAD/STICK  A/X  B/Y",
 		Vector2(0, 555), Vector2(720, 30), 14, Color("91a0c5")
 	)
 	start_overlay.add_child(controls)
@@ -262,20 +313,22 @@ func _physics_process(delta: float) -> void:
 func _control_active_piece(delta: float) -> void:
 	if active_stones.is_empty():
 		return
-	var horizontal := 0.0
+	var horizontal := Input.get_axis(INPUT_MOVE_LEFT, INPUT_MOVE_RIGHT)
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
 		horizontal -= 1.0
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		horizontal += 1.0
+	horizontal = clampf(horizontal, -1.0, 1.0)
 	if horizontal < 0.0 and active_stones.any(func(stone): return stone.touching_left_wall):
 		horizontal = 0.0
 	elif horizontal > 0.0 and active_stones.any(func(stone): return stone.touching_right_wall):
 		horizontal = 0.0
-	var dropping := Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)
+	var dropping := (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)
+		or Input.is_action_pressed(INPUT_DROP))
 	var rotate_dir := 0.0
-	if Input.is_key_pressed(KEY_M):
+	if Input.is_key_pressed(KEY_M) or Input.is_action_pressed(INPUT_ROTATE_RIGHT):
 		rotate_dir += 1.0
-	if Input.is_key_pressed(KEY_N):
+	if Input.is_key_pressed(KEY_N) or Input.is_action_pressed(INPUT_ROTATE_LEFT):
 		rotate_dir -= 1.0
 
 	# Advance a fixed-radius target layout instead of applying tangential force
