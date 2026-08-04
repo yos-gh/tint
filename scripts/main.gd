@@ -13,7 +13,9 @@ const BOWL_EDGE_Y := FIELD_TOP + STONE_SIZE * FIELD_ROWS
 const BOWL_DEPTH := 60.0
 const PIECE_GAP := 42.0
 const SPAWN_POS := Vector2(360.0, 135.0)
-const PAIR_HEIGHT_TOLERANCE := STONE_SIZE * 0.35
+const GAME_OVER_LINE_Y := FIELD_TOP + 105.0
+const SPAWN_BLOCK_HALF_WIDTH := 125.0
+const PAIR_HEIGHT_TOLERANCE := STONE_SIZE * 0.45
 const CLEAR_BAND_HALF_WIDTH := STONE_SIZE * 0.45
 
 const MOVE_FORCE := 2750.0
@@ -519,7 +521,7 @@ func _check_for_elimination() -> void:
 	var best_to := Vector2.ZERO
 	for left in left_stones:
 		for right in right_stones:
-			if absf(left.global_position.y - right.global_position.y) > PAIR_HEIGHT_TOLERANCE:
+			if not _edge_pair_is_level(left.global_position.y, right.global_position.y):
 				continue
 			var from: Vector2 = left.global_position
 			var to: Vector2 = right.global_position
@@ -546,7 +548,7 @@ func _update_near_clear_highlights() -> void:
 	var highlighted := {}
 	for left in left_stones:
 		for right in right_stones:
-			if absf(left.global_position.y - right.global_position.y) > PAIR_HEIGHT_TOLERANCE:
+			if not _edge_pair_is_level(left.global_position.y, right.global_position.y):
 				continue
 			var from: Vector2 = left.global_position
 			var to: Vector2 = right.global_position
@@ -558,6 +560,10 @@ func _update_near_clear_highlights() -> void:
 
 	for stone in stones:
 		stone.set_near_clear(highlighted.has(stone.get_instance_id()))
+
+
+func _edge_pair_is_level(left_y: float, right_y: float) -> bool:
+	return absf(left_y - right_y) <= PAIR_HEIGHT_TOLERANCE
 
 
 func _stones_near_segment(from: Vector2, to: Vector2) -> Array[Node]:
@@ -625,7 +631,7 @@ func _prune_invalid_stones() -> void:
 
 func _spawn_area_blocked() -> bool:
 	for stone in stones:
-		if stone.global_position.y < FIELD_TOP + 105.0 and absf(stone.global_position.x - SPAWN_POS.x) < 125.0:
+		if stone.global_position.y < GAME_OVER_LINE_Y and absf(stone.global_position.x - SPAWN_POS.x) < SPAWN_BLOCK_HALF_WIDTH:
 			return true
 	return false
 
@@ -666,7 +672,22 @@ func _draw() -> void:
 	draw_colored_polygon(polygon, Color("101a2c"))
 
 	for y in range(200, 801, 100):
-		draw_dashed_line(Vector2(FIELD_LEFT + 12, y), Vector2(FIELD_RIGHT - 12, y), Color(0.35, 0.44, 0.65, 0.12), 1.0, 8.0)
+		if absf(float(y) - GAME_OVER_LINE_Y) > 1.0:
+			draw_dashed_line(Vector2(FIELD_LEFT + 12, y), Vector2(FIELD_RIGHT - 12, y), Color(0.35, 0.44, 0.65, 0.12), 1.0, 8.0)
+
+	# The visible warning uses the exact height checked before the next piece
+	# spawns, so the player can judge how much safe headroom remains.
+	draw_rect(
+		Rect2(FIELD_LEFT + 5.0, GAME_OVER_LINE_Y - 5.0, FIELD_RIGHT - FIELD_LEFT - 10.0, 10.0),
+		Color(1.0, 0.36, 0.45, 0.07)
+	)
+	draw_dashed_line(
+		Vector2(FIELD_LEFT + 8.0, GAME_OVER_LINE_Y),
+		Vector2(FIELD_RIGHT - 8.0, GAME_OVER_LINE_Y),
+		Color(1.0, 0.48, 0.55, 0.52),
+		2.0,
+		10.0
+	)
 
 	draw_line(Vector2(FIELD_LEFT, FIELD_TOP), Vector2(FIELD_LEFT, BOWL_EDGE_Y), Color("52658e"), 6.0, true)
 	draw_line(Vector2(FIELD_RIGHT, FIELD_TOP), Vector2(FIELD_RIGHT, BOWL_EDGE_Y), Color("52658e"), 6.0, true)
