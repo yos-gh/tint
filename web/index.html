@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#09101e">
-  <meta name="description" content="物理演算で歪み、跳ね、積み上がる落ち物パズル TINT をブラウザで遊べます。">
+  <meta name="description" content="Play TINT, a physics-driven falling-block puzzle where connected stones bend, bounce, and pile up.">
   <title>TINT — TINT is not Tetris</title>
   <style>
     :root {
@@ -114,7 +114,7 @@
 <body>
   <header class="topbar">
     <div class="brand"><h1>TINT</h1><span>TINT is not Tetris</span></div>
-    <nav aria-label="プロジェクトリンク">
+    <nav aria-label="Project links">
       <a href="https://github.com/yos-gh/tint">Source</a>
     </nav>
   </header>
@@ -134,41 +134,44 @@
   <main>
     <div class="content">
       <p class="intro">
-        TINTは、ゴムのような紐でつながった石を物理演算で積み上げる落ち物パズルです。
-        ブロックは歪み、跳ね、任意の角度で回転します。左右の壁を同じ高さで石が結ぶと、その線上の石が消えます。
+        TINT is a physics-driven falling-block puzzle about piling up stones connected by elastic cords.
+        Pieces bend, bounce, and rotate freely. Connect both walls with stones at roughly the same height
+        to clear the stones along that line.
       </p>
 
       <div class="sections">
         <section>
-          <h2>操作</h2>
+          <h2>Controls</h2>
           <ul>
-            <li>移動: <code>A / D</code> または左右矢印</li>
-            <li>落下加速: <code>S</code> または下矢印</li>
-            <li>反時計回り: <code>N</code></li>
-            <li>時計回り: <code>M</code></li>
-            <li>再開: ゲームオーバー後に <code>R</code></li>
+            <li>Move: <code>A / D</code> or left/right arrows</li>
+            <li>Soft drop: <code>S</code> or down arrow</li>
+            <li>Rotate counterclockwise: <code>N</code></li>
+            <li>Rotate clockwise: <code>M</code></li>
+            <li>Restart after game over: <code>R</code></li>
           </ul>
         </section>
 
         <section>
-          <h2>消去ルール</h2>
+          <h2>Clear Rule</h2>
           <p>
-            左右の壁にほぼ同じ高さで接する石を結び、その近傍が十分な数の石で埋まると消去されます。
-            あと1石で成立する線は金色に発光します。
+            A line clears when stones touch both walls at roughly the same height and enough stones fill
+            the space around the segment between them. A line that needs only one more stone glows gold.
           </p>
         </section>
 
         <section>
-          <h2>スコア</h2>
+          <h2>Scoring</h2>
           <p>
-            高い位置で消すほど危険度倍率が上がります。底面では1倍、ゲームオーバーに近い最上部では16倍です。
+            Clearing higher in the field earns a larger risk multiplier: x1 near the floor and up to x16
+            near the game-over limit.
           </p>
         </section>
 
         <section>
           <h2>Prototype</h2>
           <p>
-            Godot 4で制作中のプロトタイプです。物理挙動、難易度、消去条件は今後も調整される可能性があります。
+            This prototype is built with Godot 4. Physics, difficulty, and clearing conditions may continue
+            to change during development.
           </p>
         </section>
       </div>
@@ -178,4 +181,3 @@
   <footer>TINT — browser prototype</footer>
 </body>
 </html>
-
