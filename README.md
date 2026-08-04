@@ -1,68 +1,58 @@
-# TINT prototype
+# TINT
 
-`docs/draft.md` をもとにした Godot 4 の物理パズル・プロトタイプです。
+TINT is a physics-based falling-block puzzle game made with Godot 4.
+The familiar tetromino shapes are built from soft, connected stones, so every
+drop, collision, and rotation changes the pile in unpredictable ways.
 
-## 起動
+[Play TINT in your browser](https://yos-gh.github.io/tint/)
 
-Godot でこのフォルダーの `project.godot` を開き、F6 または F5 で実行します。
-コマンドラインからは次のように起動できます。
+## How to Play
 
-```powershell
-godot --path C:\Users\ysyki\Projects\tint
-```
+Guide each falling block into the field and build a continuous, nearly level
+line of stones that reaches both side walls. Completing a line clears the
+stones along it.
 
-## 操作
+- A pulsing glow appears when a line is only one stone away from clearing.
+- Clearing stones higher in the field is riskier and awards a larger score
+  multiplier, up to x16.
+- The translucent line near the top marks the height limit. The game ends when
+  the pile reaches it.
+- A block remains controllable briefly after touching the floor or another
+  block, then the next block appears.
 
-- `A` / `D` または左右矢印: 左右へ力を加える
-- `S` または下矢印: 落下を加速する
-- `M`: 時計回りに回す
-- `N`: 反時計回りに回す
-- `R`: ゲームオーバー後に再開する
-- ゲームパッドのD-padまたは左スティック: 左右移動・下方向で落下を加速する
-- ゲームパッドの`A` / `X`: 反時計回り、`B` / `Y`: 時計回りに回す
+Rotations are continuous rather than locked to 90-degree steps. The stones are
+elastic, but each block will try to retain its original shape.
 
-回転は90度単位ではありません。キーを押しているあいだ、石の集まりへ回転方向の力が加わります。
-起動直後は仮タイトル画面が表示され、任意のキー、ゲームパッドのボタン、またはスティックを大きく入力するとゲームが始まります。
-底面または以前に落とした石へ接触すると、約0.3秒後に操作が固定され、次のブロックが現れます。
+## Controls
 
-## このプロトタイプで試せること
+| Action | Keyboard | Gamepad |
+| --- | --- | --- |
+| Move left or right | `A` / `D` or arrow keys | D-pad or left stick |
+| Drop faster | `S` or down arrow | D-pad down or left stick down |
+| Rotate counterclockwise | `N` | `A` or `X` |
+| Rotate clockwise | `M` | `B` or `Y` |
+| Restart after game over | `R` | — |
 
-- 7種類のテトロミノに似た形
-- 弾性を持つ角丸の石
-- 石の中心間へ取り付けた強いバネと形状記憶力による、元のシルエットを保ちながら圧縮できる連結
-- 任意角度の回転と物理落下
-- 石幅換算10×20の基本領域と、中央が約60px深く窪んだ湾曲底面
-- 左右の壁に接した石を結ぶ、グリッドを使わない消去
-- 消去まであと1石になった線を知らせるパルス発光
-- ゲームオーバー判定の高さを示す半透明の警告線
-- 消去位置が高いほど最大16倍になる危険度倍率、ゲームオーバーと再開
+Press any keyboard key, gamepad button, or move the left stick to begin from
+the title screen.
 
-## 消去ルールの暫定解釈
+## Run Locally
 
-フィールドの基本内寸は石幅換算で横10・縦20です。底面は左右端から中央へ約60px深くなる放物線状で、最深部を含む外寸は基本領域より少し縦長です。
-
-草案にある「一定数」は、左右端の石を結ぶ線分へ石を隙間なく並べられる個数そのもの、としています。中心間距離が表す区間数へ1を加え、横10石のフィールドでは10石を必要とします。石の中心が線分から石幅の45%以内にあれば、その線上にあるものとして数えます。左右端の石は高さの差が石幅の45%以内の場合のみペアになります。必要数よりちょうど1個少ない場合は、候補となる石が強く発光します。
-
-消去得点は `消去石数 × 100 × 高さ倍率` です。高さ倍率は左右壁の底面で1倍、ゲームオーバー側の最上部で16倍となるよう、消去線の高さから線形に計算します。連続消去回数による倍率はありません。
-
-主な調整値は `scripts/main.gd` の冒頭にまとめてあります。消去判定は `_check_for_elimination()`、線分近傍の判定は `_stones_near_segment()` にあります。
-
-通常重力はテストプレイ向けに標準値の半分へ下げています。落下速度は `project.godot` の `2d/default_gravity`、下入力の加速は `SOFT_DROP_FORCE`、形状保持の強さは `SHAPE_MEMORY_STIFFNESS` と `SHAPE_MEMORY_DAMPING`、接地後の猶予は `LOCK_DELAY` で調整できます。壁は厚みのある形状と連続衝突判定の両方で高速な石のすり抜けを防ぎます。
-
-形状記憶の復元力は、大きな衝突誤差が生じた場合に `SHAPE_MEMORY_MAX_FORCE` で飽和します。各石にもゲーム用の最大速度を設け、複数のバネ拘束が同時に反発した際の数値的な吹き飛びを防止しています。
-
-回転操作は現在位置へ接線力を加える方式ではなく、元形状を固定半径のまま目標角度へ進める方式です。衝突で形が大きく崩れた場合は回転を一時停止して復元を優先します。接地後は形状記憶力を受動的な強さへ下げ、積み石同士が能動的に跳ね返し合うのを抑えています。
-
-形状記憶はブロック内部の拘束として合力が常にゼロになるよう補正されます。回転中に接触反力で重心へ上向き速度が生じた場合も、その並進成分だけを除き、落下を妨げないようにしています。
-
-## エラー監視
-
-[Sentry for Godot](https://github.com/getsentry/sentry-godot) 2.1.1を`addons/sentry`へ同梱し、起動時に自動初期化します。DSNは`project.godot`の`sentry/options/dsn`で設定し、標準の個人識別情報送信は無効にしています。
-
-WebエクスポートではGDExtension対応を有効にし、SentryのJavaScriptブリッジを自動挿入します。SDKを更新する場合は、公式Releasesから新しい`addons/sentry`を取得してください。
-
-接続確認を明示的に行う場合だけ、次のスモークテストを実行します。`Hello, World!`イベントを実際のSentryプロジェクトへ1件送信するため、通常のテスト一式には含めていません。
+TINT requires Godot 4.7 or later. Open `project.godot` in Godot and press
+`F6` or `F5`, or run it from a terminal:
 
 ```powershell
-godot --headless --path . --script res://tests/sentry_smoke.gd
+godot --path .
 ```
+
+## Build for the Web
+
+Install the official export templates that match your Godot version, then run:
+
+```powershell
+godot --headless --path . --export-release Web web/game/index.html
+```
+
+The playable build is written to `web/game`. The Sentry monitoring extension
+and its Web support files are included in the repository, so no additional SDK
+installation is required.
