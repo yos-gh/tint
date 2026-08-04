@@ -47,6 +47,7 @@ const SETTLED_SHAPE_STIFFNESS := 1100.0
 const SETTLED_SHAPE_DAMPING := 38.0
 const SETTLED_SHAPE_MAX_FORCE := 6000.0
 const ROTATION_DEFORMATION_LIMIT := STONE_SIZE * 0.40
+const MAX_ROTATION_TARGET_LEAD := 0.24
 const LOCK_DELAY := 0.3
 const NEAR_CLEAR_SCAN_INTERVAL := 0.12
 const MIN_HEIGHT_MULTIPLIER := 1
@@ -331,16 +332,34 @@ func _control_active_piece(delta: float) -> void:
 	if Input.is_key_pressed(KEY_N) or Input.is_action_pressed(INPUT_ROTATE_LEFT):
 		rotate_dir -= 1.0
 
-	# Advance a fixed-radius target layout instead of applying tangential force
-	# at the stones' current radius. If an impact deforms the piece too far,
-	# pause the requested rotation until shape memory has pulled it together.
+	# Keep the target slightly ahead of the piece instead of stopping rotation
+	# whenever the physical stones lag behind it. The former on/off threshold
+	# alternated every few frames during a held input and looked like twitching.
 	for group in shape_groups:
 		if group["id"] != active_group_id:
 			continue
-		var shape_error := _shape_error(group)
-		if rotate_dir != 0.0 and shape_error <= ROTATION_DEFORMATION_LIMIT:
-			group["target_rotation"] = float(group["target_rotation"]) + rotate_dir * TARGET_ROTATION_SPEED * delta
-			group["target_angular_velocity"] = rotate_dir * TARGET_ROTATION_SPEED
+		if rotate_dir != 0.0:
+			var current_target: float = group["target_rotation"]
+			var shape_error := _shape_error(group)
+			var rotation_scale := 1.0 - smoothstep(
+				ROTATION_DEFORMATION_LIMIT * 0.85, ROTATION_DEFORMATION_LIMIT, shape_error
+			)
+			var next_target := current_target
+			if rotation_scale > 0.0:
+				var fitted_rotation := _fitted_group_rotation(group)
+				var unwrapped_fitted := current_target + angle_difference(current_target, fitted_rotation)
+				var desired_target := (
+					current_target + rotate_dir * TARGET_ROTATION_SPEED * rotation_scale * delta
+				)
+				var target_lead := angle_difference(unwrapped_fitted, desired_target)
+				next_target = unwrapped_fitted + clampf(
+					target_lead, -MAX_ROTATION_TARGET_LEAD, MAX_ROTATION_TARGET_LEAD
+				)
+			group["target_rotation"] = next_target
+			# Fade the rotational velocity over the same deformation range. A
+			# blocked tip then slows smoothly instead of either tearing the piece
+			# apart or toggling abruptly on and off.
+			group["target_angular_velocity"] = rotate_dir * TARGET_ROTATION_SPEED * rotation_scale
 		else:
 			group["target_angular_velocity"] = 0.0
 		break
@@ -386,6 +405,29 @@ func _shape_error(group: Dictionary) -> float:
 		var target: Vector2 = current_center + reference.rotated(target_rotation)
 		maximum_error = maxf(maximum_error, stone.global_position.distance_to(target))
 	return maximum_error
+
+
+func _fitted_group_rotation(group: Dictionary) -> float:
+	var group_stones: Array = group["stones"].filter(
+		func(stone): return is_instance_valid(stone) and not stone.is_queued_for_deletion()
+	)
+	if group_stones.size() < 2:
+		return float(group["target_rotation"])
+	var current_center := Vector2.ZERO
+	var reference_center := Vector2.ZERO
+	for stone in group_stones:
+		current_center += stone.global_position
+		reference_center += group["offsets"][stone.get_instance_id()]
+	current_center /= float(group_stones.size())
+	reference_center /= float(group_stones.size())
+	var dot_sum := 0.0
+	var cross_sum := 0.0
+	for stone in group_stones:
+		var reference: Vector2 = group["offsets"][stone.get_instance_id()] - reference_center
+		var current: Vector2 = stone.global_position - current_center
+		dot_sum += reference.dot(current)
+		cross_sum += reference.cross(current)
+	return atan2(cross_sum, dot_sum)
 
 
 func _update_active_piece(delta: float) -> void:
