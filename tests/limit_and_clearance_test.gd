@@ -14,14 +14,16 @@ func _run() -> void:
 	var relaxed_pair_ok: bool = game._edge_pair_is_level(300.0, 300.0 + tolerance - 0.1)
 	var outside_pair_rejected: bool = not game._edge_pair_is_level(300.0, 300.0 + tolerance + 0.1)
 
-	var blocker := Node2D.new()
+	var blocker: Node = game.StoneScene.new()
+	blocker.setup(Color.WHITE, 999)
 	game.add_child(blocker)
 	game.stones.clear()
 	game.stones.append(blocker)
+	game.active_group_id = -1
 	blocker.global_position = Vector2(game.SPAWN_POS.x, game.GAME_OVER_LINE_Y - 0.1)
-	var above_line_blocks: bool = game._spawn_area_blocked()
+	var above_line_blocks: bool = game._settled_stones_exceed_limit()
 	blocker.global_position.y = game.GAME_OVER_LINE_Y + 0.1
-	var below_line_is_safe: bool = not game._spawn_area_blocked()
+	var below_line_is_safe: bool = not game._settled_stones_exceed_limit()
 
 	if relaxed_pair_ok and outside_pair_rejected and above_line_blocks and below_line_is_safe:
 		print("PASS: clear tolerance is relaxed and the visible limit matches game-over height")

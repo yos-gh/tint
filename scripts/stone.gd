@@ -10,6 +10,7 @@ var group_id := 0
 var is_supported := false
 var touching_left_wall := false
 var touching_right_wall := false
+var has_external_contact := false
 var near_clear := false
 var glow_time := 0.0
 
@@ -85,10 +86,13 @@ func _integrate_forces(state: PhysicsDirectBodyState2D) -> void:
 	is_supported = false
 	touching_left_wall = false
 	touching_right_wall = false
+	has_external_contact = false
 
 	for contact_index in range(state.get_contact_count()):
 		var normal := state.get_contact_local_normal(contact_index)
 		var collider := state.get_contact_collider_object(contact_index)
+		if collider is StaticBody2D or (collider is TintStone and collider.group_id != group_id):
+			has_external_contact = true
 
 		# The normal points into this stone. An upward-facing normal therefore
 		# means the floor or another piece is supporting it from below.

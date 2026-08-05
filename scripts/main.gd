@@ -14,7 +14,6 @@ const BOWL_DEPTH := 60.0
 const PIECE_GAP := 42.0
 const SPAWN_POS := Vector2(360.0, 135.0)
 const GAME_OVER_LINE_Y := FIELD_TOP + 105.0
-const SPAWN_BLOCK_HALF_WIDTH := 125.0
 const PAIR_HEIGHT_TOLERANCE := STONE_SIZE * 0.45
 const CLEAR_BAND_HALF_WIDTH := STONE_SIZE * 0.45
 
@@ -43,12 +42,14 @@ const SHAPE_MEMORY_DAMPING := 55.0
 # Keep small errors stiff, but saturate large collision errors before one
 # physics tick can inject enough energy to launch a stone across the screen.
 const SHAPE_MEMORY_MAX_FORCE := 20000.0
+const FREE_ROTATION_MAX_FORCE := 42000.0
 const SETTLED_SHAPE_STIFFNESS := 1100.0
 const SETTLED_SHAPE_DAMPING := 38.0
 const SETTLED_SHAPE_MAX_FORCE := 6000.0
 const ROTATION_DEFORMATION_LIMIT := STONE_SIZE * 0.40
-const MAX_ROTATION_TARGET_LEAD := 0.24
+const MAX_ROTATION_TARGET_LEAD := 0.10
 const LOCK_DELAY := 0.3
+const GAME_OVER_GRACE_PERIOD := 5.0
 const NEAR_CLEAR_SCAN_INTERVAL := 0.12
 const MIN_HEIGHT_MULTIPLIER := 1
 const MAX_HEIGHT_MULTIPLIER := 16
@@ -80,6 +81,7 @@ var score := 0
 var cleared := 0
 var last_height_multiplier := 1
 var is_game_over := false
+var game_over_exposure := 0.0
 var elimination_cooldown := 0.0
 var near_clear_cooldown := 0.0
 var flash_lines: Array[Dictionary] = []
@@ -87,6 +89,7 @@ var flash_lines: Array[Dictionary] = []
 var score_label: Label
 var status_label: Label
 var help_label: Label
+var limit_label: Label
 var start_overlay: ColorRect
 var is_started := false
 
@@ -96,6 +99,7 @@ func _ready() -> void:
 	_configure_gamepad_input()
 	_build_world()
 	_build_ui()
+	_build_touch_controls()
 	_build_start_overlay()
 	queue_redraw()
 
@@ -104,8 +108,12 @@ func _input(event: InputEvent) -> void:
 	var keyboard_start: bool = event is InputEventKey and event.pressed and not event.echo
 	var button_start: bool = event is InputEventJoypadButton and event.pressed
 	var stick_start: bool = event is InputEventJoypadMotion and absf(event.axis_value) >= 0.5
-	if not is_started and (keyboard_start or button_start or stick_start):
+	var touch_start: bool = event is InputEventScreenTouch and event.pressed
+	if not is_started and (keyboard_start or button_start or stick_start or touch_start):
 		start_game()
+		get_viewport().set_input_as_handled()
+	elif is_game_over and touch_start:
+		get_tree().reload_current_scene()
 		get_viewport().set_input_as_handled()
 
 
@@ -160,11 +168,11 @@ func start_game() -> void:
 
 func _build_world() -> void:
 	var boundary := StaticBody2D.new()
-	boundary.name = "Boundary"
+	boundary.name = "Bowl"
 	add_child(boundary)
 
-	_add_wall(boundary, FIELD_LEFT, true)
-	_add_wall(boundary, FIELD_RIGHT, false)
+	_add_wall(FIELD_LEFT, true)
+	_add_wall(FIELD_RIGHT, false)
 
 	var previous := Vector2(FIELD_LEFT, _bowl_y(FIELD_LEFT))
 	for index in range(1, 25):
@@ -174,8 +182,15 @@ func _build_world() -> void:
 		previous = current
 
 
-func _add_wall(body: StaticBody2D, inner_x: float, is_left: bool) -> void:
+func _add_wall(inner_x: float, is_left: bool) -> void:
 	const WALL_THICKNESS := 48.0
+	var body := StaticBody2D.new()
+	body.name = "LeftWall" if is_left else "RightWall"
+	var wall_material := PhysicsMaterial.new()
+	wall_material.friction = 0.0
+	wall_material.bounce = 0.0
+	body.physics_material_override = wall_material
+	add_child(body)
 	var collision := CollisionShape2D.new()
 	var rectangle := RectangleShape2D.new()
 	# Extend well beyond the viewport so a collision cannot launch a stone over
@@ -236,6 +251,18 @@ func _build_ui() -> void:
 	status_label.visible = false
 	add_child(status_label)
 
+	limit_label = Label.new()
+	limit_label.position = Vector2(FIELD_LEFT, GAME_OVER_LINE_Y - 38.0)
+	limit_label.size = Vector2(FIELD_RIGHT - FIELD_LEFT, 30.0)
+	limit_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	limit_label.add_theme_font_size_override("font_size", 17)
+	limit_label.add_theme_color_override("font_color", Color("ff8b98"))
+	limit_label.add_theme_constant_override("outline_size", 5)
+	limit_label.add_theme_color_override("font_outline_color", Color(0.025, 0.035, 0.06, 0.95))
+	limit_label.z_index = 90
+	limit_label.visible = false
+	add_child(limit_label)
+
 	help_label = Label.new()
 	help_label.text = "KEYS  A/D  S  N/M     PAD  D-PAD/STICK  A/X  B/Y"
 	help_label.position = Vector2(70, 926)
@@ -260,13 +287,68 @@ func _build_start_overlay() -> void:
 	start_overlay.add_child(start_title)
 	var start_subtitle := _start_label("TINT is not Tetris", Vector2(0, 345), Vector2(720, 34), 18, Color("8292b8"))
 	start_overlay.add_child(start_subtitle)
-	var prompt := _start_label("PRESS ANY KEY OR BUTTON", Vector2(0, 470), Vector2(720, 50), 24, Color("fff3c4"))
+	var prompt := _start_label("PRESS ANY KEY, BUTTON, OR TAP", Vector2(0, 470), Vector2(720, 50), 24, Color("fff3c4"))
 	start_overlay.add_child(prompt)
 	var controls := _start_label(
 		"KEYS  A/D  S  N/M     PAD  D-PAD/STICK  A/X  B/Y",
 		Vector2(0, 555), Vector2(720, 30), 14, Color("91a0c5")
 	)
 	start_overlay.add_child(controls)
+
+
+func _build_touch_controls() -> void:
+	var touch_layer := Node2D.new()
+	touch_layer.name = "TouchControls"
+	touch_layer.z_index = 80
+	add_child(touch_layer)
+	_add_touch_button(touch_layer, INPUT_MOVE_LEFT, Vector2(43, 785), "◀", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_MOVE_RIGHT, Vector2(131, 785), "▶", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_DROP, Vector2(87, 870), "▼", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_ROTATE_LEFT, Vector2(589, 825), "↶", Color("ffd166"))
+	_add_touch_button(touch_layer, INPUT_ROTATE_RIGHT, Vector2(677, 825), "↷", Color("ffd166"))
+
+
+func _add_touch_button(
+	parent: Node, action: StringName, center: Vector2, symbol: String, color: Color
+) -> void:
+	var button := TouchScreenButton.new()
+	button.name = String(action)
+	button.position = center
+	button.action = action
+	button.passby_press = true
+	button.visibility_mode = TouchScreenButton.VISIBILITY_TOUCHSCREEN_ONLY
+	var touch_shape := CircleShape2D.new()
+	touch_shape.radius = 37.0
+	button.shape = touch_shape
+	parent.add_child(button)
+
+	var disc := Polygon2D.new()
+	var points := PackedVector2Array()
+	for index in range(32):
+		var angle := TAU * float(index) / 32.0
+		points.append(Vector2.from_angle(angle) * 35.0)
+	disc.polygon = points
+	disc.color = Color(color, 0.24)
+	button.add_child(disc)
+
+	var ring := Line2D.new()
+	ring.points = points
+	ring.closed = true
+	ring.width = 2.5
+	ring.default_color = Color(color, 0.68)
+	ring.antialiased = true
+	button.add_child(ring)
+
+	var label := Label.new()
+	label.text = symbol
+	label.position = Vector2(-35, -35)
+	label.size = Vector2(70, 70)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", 29)
+	label.add_theme_color_override("font_color", Color(color, 0.92))
+	button.add_child(label)
 
 
 func _start_label(text: String, position: Vector2, size: Vector2, font_size: int, color: Color) -> Label:
@@ -294,6 +376,9 @@ func _physics_process(delta: float) -> void:
 	elimination_cooldown -= delta
 	near_clear_cooldown -= delta
 	_prune_invalid_stones()
+	_update_game_over_state(delta)
+	if is_game_over:
+		return
 	_control_active_piece(delta)
 	_apply_shape_memory()
 	_update_active_piece(delta)
@@ -320,9 +405,13 @@ func _control_active_piece(delta: float) -> void:
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		horizontal += 1.0
 	horizontal = clampf(horizontal, -1.0, 1.0)
-	if horizontal < 0.0 and active_stones.any(func(stone): return stone.touching_left_wall):
+	if horizontal < 0.0 and active_stones.any(func(stone):
+		return stone.touching_left_wall or stone.global_position.x - STONE_SIZE * 0.5 <= FIELD_LEFT + 2.0
+	):
 		horizontal = 0.0
-	elif horizontal > 0.0 and active_stones.any(func(stone): return stone.touching_right_wall):
+	elif horizontal > 0.0 and active_stones.any(func(stone):
+		return stone.touching_right_wall or stone.global_position.x + STONE_SIZE * 0.5 >= FIELD_RIGHT - 2.0
+	):
 		horizontal = 0.0
 	var dropping := (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)
 		or Input.is_action_pressed(INPUT_DROP))
@@ -452,8 +541,7 @@ func _update_active_piece(delta: float) -> void:
 
 
 func _spawn_piece(shape_override: String = "") -> void:
-	if _spawn_area_blocked():
-		_game_over()
+	if is_game_over:
 		return
 	group_counter += 1
 	active_group_id = group_counter
@@ -544,6 +632,9 @@ func _apply_shape_memory() -> void:
 		var stiffness: float = SETTLED_SHAPE_STIFFNESS if use_settled_gains else SHAPE_MEMORY_STIFFNESS
 		var damping: float = SETTLED_SHAPE_DAMPING if use_settled_gains else SHAPE_MEMORY_DAMPING
 		var maximum_force: float = SETTLED_SHAPE_MAX_FORCE if use_settled_gains else SHAPE_MEMORY_MAX_FORCE
+		var has_external_contact: bool = group_stones.any(func(stone): return stone.has_external_contact)
+		if controlled and not has_external_contact:
+			maximum_force = FREE_ROTATION_MAX_FORCE
 
 		var pending_forces: Array[Vector2] = []
 		var force_sum := Vector2.ZERO
@@ -687,10 +778,36 @@ func _eliminate(targets: Array[Node], from: Vector2, to: Vector2) -> void:
 	cleared += targets.size()
 	score += targets.size() * 100 * last_height_multiplier
 	flash_lines.append({"from": from, "to": to, "life": 0.42})
+	_show_multiplier_effect(last_height_multiplier, (from + to) * 0.5)
 	for stone in targets:
 		_remove_stone_and_links(stone)
 	_update_ui()
 	elimination_cooldown = 0.55
+
+
+func _show_multiplier_effect(multiplier: int, center: Vector2) -> void:
+	var label := Label.new()
+	label.name = "ScoreMultiplier"
+	label.text = "x%d" % multiplier
+	label.position = center - Vector2(70, 30)
+	label.size = Vector2(140, 60)
+	label.pivot_offset = label.size * 0.5
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.z_index = 140
+	label.scale = Vector2(0.65, 0.65)
+	label.add_theme_font_size_override("font_size", 34)
+	label.add_theme_color_override("font_color", Color("ffe08a"))
+	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_color_override("font_outline_color", Color(0.025, 0.035, 0.06, 0.96))
+	add_child(label)
+	var tween := create_tween().set_parallel(true)
+	tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "scale", Vector2(1.2, 1.2), 0.32)
+	tween.tween_property(label, "position:y", label.position.y - 52.0, 0.85)
+	tween.tween_property(label, "modulate:a", 0.0, 0.38).set_delay(0.47)
+	tween.tween_callback(label.queue_free).set_delay(0.9)
 
 
 func _height_score_multiplier(from: Vector2, to: Vector2) -> int:
@@ -724,16 +841,30 @@ func _prune_invalid_stones() -> void:
 	active_stones = active_stones.filter(func(stone): return is_instance_valid(stone) and not stone.is_queued_for_deletion())
 
 
-func _spawn_area_blocked() -> bool:
-	for stone in stones:
-		if stone.global_position.y < GAME_OVER_LINE_Y and absf(stone.global_position.x - SPAWN_POS.x) < SPAWN_BLOCK_HALF_WIDTH:
-			return true
-	return false
+func _settled_stones_exceed_limit() -> bool:
+	return stones.any(func(stone):
+		return (is_instance_valid(stone) and stone is TintStone
+			and stone.group_id != active_group_id and stone.global_position.y < GAME_OVER_LINE_Y)
+	)
+
+
+func _update_game_over_state(delta: float) -> void:
+	if not _settled_stones_exceed_limit():
+		game_over_exposure = 0.0
+		limit_label.visible = false
+		return
+	game_over_exposure = minf(game_over_exposure + delta, GAME_OVER_GRACE_PERIOD)
+	var remaining := maxf(GAME_OVER_GRACE_PERIOD - game_over_exposure, 0.0)
+	limit_label.text = "LIMIT  %.1f" % remaining
+	limit_label.visible = true
+	if game_over_exposure >= GAME_OVER_GRACE_PERIOD:
+		_game_over()
 
 
 func _game_over() -> void:
 	is_game_over = true
-	status_label.text = "PILE JAMMED\nPress R to restart"
+	limit_label.visible = false
+	status_label.text = "PILE JAMMED\nPress R or tap to restart"
 	status_label.visible = true
 	help_label.text = "R  RESTART"
 
