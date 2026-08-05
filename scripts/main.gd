@@ -301,11 +301,11 @@ func _build_touch_controls() -> void:
 	touch_layer.name = "TouchControls"
 	touch_layer.z_index = 80
 	add_child(touch_layer)
-	_add_touch_button(touch_layer, INPUT_MOVE_LEFT, Vector2(43, 785), "◀", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_MOVE_RIGHT, Vector2(131, 785), "▶", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_DROP, Vector2(87, 870), "▼", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_ROTATE_LEFT, Vector2(589, 825), "↶", Color("ffd166"))
-	_add_touch_button(touch_layer, INPUT_ROTATE_RIGHT, Vector2(677, 825), "↷", Color("ffd166"))
+	_add_touch_button(touch_layer, INPUT_MOVE_LEFT, Vector2(43, 785), "<", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_MOVE_RIGHT, Vector2(131, 785), ">", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_DROP, Vector2(87, 870), "v", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_ROTATE_LEFT, Vector2(589, 825), "CCW", Color("ffd166"))
+	_add_touch_button(touch_layer, INPUT_ROTATE_RIGHT, Vector2(677, 825), "CW", Color("ffd166"))
 
 
 func _add_touch_button(
@@ -346,7 +346,7 @@ func _add_touch_button(
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 29)
+	label.add_theme_font_size_override("font_size", 17 if symbol.length() > 1 else 29)
 	label.add_theme_color_override("font_color", Color(color, 0.92))
 	button.add_child(label)
 
