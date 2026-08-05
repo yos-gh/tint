@@ -33,8 +33,9 @@ elastic, but each block will try to retain its original shape.
 | Rotate clockwise | `M` | `B` or `Y` |
 | Restart after game over | `R` | — |
 
-On a touchscreen, use the virtual D-pad on the left to move or drop and the
-two buttons on the right to rotate. Tap the screen to restart after game over.
+On a touchscreen, drag the virtual analog stick on the left to move or drop and
+use the two buttons on the right to rotate. Tap the screen to restart after
+game over.
 
 Press any keyboard key, gamepad button, or move the left stick to begin from
 the title screen.

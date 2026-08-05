@@ -1,6 +1,7 @@
 extends Node2D
 
 const StoneScene = preload("res://scripts/stone.gd")
+const VirtualStickScene = preload("res://scripts/virtual_stick.gd")
 
 const STONE_SIZE := 38.0
 const FIELD_COLUMNS := 10
@@ -90,6 +91,7 @@ var score_label: Label
 var status_label: Label
 var help_label: Label
 var limit_label: Label
+var touch_stick: TintVirtualStick
 var start_overlay: ColorRect
 var is_started := false
 
@@ -301,9 +303,10 @@ func _build_touch_controls() -> void:
 	touch_layer.name = "TouchControls"
 	touch_layer.z_index = 80
 	add_child(touch_layer)
-	_add_touch_button(touch_layer, INPUT_MOVE_LEFT, Vector2(43, 785), "left", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_MOVE_RIGHT, Vector2(131, 785), "right", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_DROP, Vector2(87, 870), "down", Color("55d6be"))
+	touch_stick = VirtualStickScene.new()
+	touch_stick.name = "VirtualStick"
+	touch_stick.position = Vector2(87, 825)
+	touch_layer.add_child(touch_stick)
 	_add_touch_button(touch_layer, INPUT_ROTATE_LEFT, Vector2(589, 825), "ccw", Color("ffd166"))
 	_add_touch_button(touch_layer, INPUT_ROTATE_RIGHT, Vector2(677, 825), "cw", Color("ffd166"))
 
@@ -339,23 +342,7 @@ func _add_touch_button(
 	ring.antialiased = true
 	button.add_child(ring)
 
-	if icon == "cw" or icon == "ccw":
-		_add_rotation_touch_icon(button, icon == "cw", color)
-	else:
-		var direction: Vector2 = {
-			"left": Vector2.LEFT,
-			"right": Vector2.RIGHT,
-			"down": Vector2.DOWN,
-		}[icon]
-		var perpendicular := Vector2(-direction.y, direction.x)
-		var arrow := Polygon2D.new()
-		arrow.polygon = PackedVector2Array([
-			direction * 14.0,
-			-direction * 9.0 + perpendicular * 11.0,
-			-direction * 9.0 - perpendicular * 11.0,
-		])
-		arrow.color = Color(color, 0.92)
-		button.add_child(arrow)
+	_add_rotation_touch_icon(button, icon == "cw", color)
 
 
 func _add_rotation_touch_icon(button: TouchScreenButton, clockwise: bool, color: Color) -> void:
@@ -435,6 +422,8 @@ func _control_active_piece(delta: float) -> void:
 	if active_stones.is_empty():
 		return
 	var horizontal := Input.get_axis(INPUT_MOVE_LEFT, INPUT_MOVE_RIGHT)
+	if is_instance_valid(touch_stick):
+		horizontal += touch_stick.value.x
 	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
 		horizontal -= 1.0
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
@@ -448,8 +437,11 @@ func _control_active_piece(delta: float) -> void:
 		return stone.touching_right_wall or stone.global_position.x + STONE_SIZE * 0.5 >= FIELD_RIGHT - 2.0
 	):
 		horizontal = 0.0
-	var dropping := (Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)
-		or Input.is_action_pressed(INPUT_DROP))
+	var drop_strength := Input.get_action_strength(INPUT_DROP)
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		drop_strength = 1.0
+	if is_instance_valid(touch_stick):
+		drop_strength = maxf(drop_strength, maxf(touch_stick.value.y, 0.0))
 	var rotate_dir := 0.0
 	if Input.is_key_pressed(KEY_M) or Input.is_action_pressed(INPUT_ROTATE_RIGHT):
 		rotate_dir += 1.0
@@ -491,7 +483,7 @@ func _control_active_piece(delta: float) -> void:
 	for stone in active_stones:
 		if not is_instance_valid(stone):
 			continue
-		stone.apply_central_force(Vector2(horizontal * MOVE_FORCE, SOFT_DROP_FORCE if dropping else 0.0))
+		stone.apply_central_force(Vector2(horizontal * MOVE_FORCE, SOFT_DROP_FORCE * drop_strength))
 
 	# Rotation must not become translational lift. Remove only the shared upward
 	# velocity of the piece; relative velocities that form the rotation remain.
