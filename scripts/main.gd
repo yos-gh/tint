@@ -301,15 +301,15 @@ func _build_touch_controls() -> void:
 	touch_layer.name = "TouchControls"
 	touch_layer.z_index = 80
 	add_child(touch_layer)
-	_add_touch_button(touch_layer, INPUT_MOVE_LEFT, Vector2(43, 785), "<", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_MOVE_RIGHT, Vector2(131, 785), ">", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_DROP, Vector2(87, 870), "v", Color("55d6be"))
-	_add_touch_button(touch_layer, INPUT_ROTATE_LEFT, Vector2(589, 825), "CCW", Color("ffd166"))
-	_add_touch_button(touch_layer, INPUT_ROTATE_RIGHT, Vector2(677, 825), "CW", Color("ffd166"))
+	_add_touch_button(touch_layer, INPUT_MOVE_LEFT, Vector2(43, 785), "left", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_MOVE_RIGHT, Vector2(131, 785), "right", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_DROP, Vector2(87, 870), "down", Color("55d6be"))
+	_add_touch_button(touch_layer, INPUT_ROTATE_LEFT, Vector2(589, 825), "ccw", Color("ffd166"))
+	_add_touch_button(touch_layer, INPUT_ROTATE_RIGHT, Vector2(677, 825), "cw", Color("ffd166"))
 
 
 func _add_touch_button(
-	parent: Node, action: StringName, center: Vector2, symbol: String, color: Color
+	parent: Node, action: StringName, center: Vector2, icon: String, color: Color
 ) -> void:
 	var button := TouchScreenButton.new()
 	button.name = String(action)
@@ -339,16 +339,51 @@ func _add_touch_button(
 	ring.antialiased = true
 	button.add_child(ring)
 
-	var label := Label.new()
-	label.text = symbol
-	label.position = Vector2(-35, -35)
-	label.size = Vector2(70, 70)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_font_size_override("font_size", 17 if symbol.length() > 1 else 29)
-	label.add_theme_color_override("font_color", Color(color, 0.92))
-	button.add_child(label)
+	if icon == "cw" or icon == "ccw":
+		_add_rotation_touch_icon(button, icon == "cw", color)
+	else:
+		var direction: Vector2 = {
+			"left": Vector2.LEFT,
+			"right": Vector2.RIGHT,
+			"down": Vector2.DOWN,
+		}[icon]
+		var perpendicular := Vector2(-direction.y, direction.x)
+		var arrow := Polygon2D.new()
+		arrow.polygon = PackedVector2Array([
+			direction * 14.0,
+			-direction * 9.0 + perpendicular * 11.0,
+			-direction * 9.0 - perpendicular * 11.0,
+		])
+		arrow.color = Color(color, 0.92)
+		button.add_child(arrow)
+
+
+func _add_rotation_touch_icon(button: TouchScreenButton, clockwise: bool, color: Color) -> void:
+	var arc := Line2D.new()
+	arc.width = 3.5
+	arc.default_color = Color(color, 0.92)
+	arc.antialiased = true
+	var points := PackedVector2Array()
+	var start_angle := -2.5 if clockwise else -0.64
+	var end_angle := 2.2 if clockwise else -5.34
+	for index in range(22):
+		var amount := float(index) / 21.0
+		points.append(Vector2.from_angle(lerpf(start_angle, end_angle, amount)) * 16.0)
+	arc.points = points
+	button.add_child(arc)
+
+	var tip := points[points.size() - 1]
+	var tangent_angle := end_angle + (PI * 0.5 if clockwise else -PI * 0.5)
+	var direction := Vector2.from_angle(tangent_angle)
+	var perpendicular := Vector2(-direction.y, direction.x)
+	var arrowhead := Polygon2D.new()
+	arrowhead.polygon = PackedVector2Array([
+		tip + direction * 2.0,
+		tip - direction * 9.0 + perpendicular * 5.0,
+		tip - direction * 9.0 - perpendicular * 5.0,
+	])
+	arrowhead.color = Color(color, 0.92)
+	button.add_child(arrowhead)
 
 
 func _start_label(text: String, position: Vector2, size: Vector2, font_size: int, color: Color) -> Label:
