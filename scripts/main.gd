@@ -319,7 +319,11 @@ func _add_touch_button(
 	button.position = center
 	button.action = action
 	button.passby_press = true
-	button.visibility_mode = TouchScreenButton.VISIBILITY_TOUCHSCREEN_ONLY
+	# TouchScreenButton's Web heuristic can report a pen tablet as a touch
+	# display even when Godot's DisplayServer does not. Use the exact same
+	# condition as the virtual stick so the two control groups stay in sync.
+	button.visibility_mode = TouchScreenButton.VISIBILITY_ALWAYS
+	button.visible = DisplayServer.is_touchscreen_available()
 	var touch_shape := CircleShape2D.new()
 	touch_shape.radius = 37.0
 	button.shape = touch_shape

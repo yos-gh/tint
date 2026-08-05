@@ -18,7 +18,8 @@ func _run() -> void:
 	var touch_ok: bool = touch_layer != null and rotation_actions.all(func(action):
 		var button := touch_layer.get_node_or_null(String(action))
 		return (button is TouchScreenButton and button.action == action
-			and button.visibility_mode == TouchScreenButton.VISIBILITY_TOUCHSCREEN_ONLY)
+			and button.visibility_mode == TouchScreenButton.VISIBILITY_ALWAYS
+			and button.visible == DisplayServer.is_touchscreen_available())
 	)
 	var virtual_stick := touch_layer.get_node_or_null("VirtualStick") if touch_layer else null
 	var analog_ok: bool = virtual_stick is TintVirtualStick
