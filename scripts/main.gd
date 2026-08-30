@@ -526,10 +526,27 @@ func _control_active_piece(delta: float) -> void:
 func _remove_active_input_velocity() -> void:
 	if active_input_velocity == Vector2.ZERO:
 		return
+	var current_average := _average_active_velocity()
+	# Collisions may already have consumed some or all of the commanded speed.
+	# Remove only the part that is still moving in the commanded direction;
+	# subtracting the recorded value unconditionally turns a stopped soft drop
+	# into an artificial upward launch when the lock delay expires.
+	var removable_velocity := Vector2(
+		_matching_input_velocity(current_average.x, active_input_velocity.x),
+		_matching_input_velocity(current_average.y, active_input_velocity.y)
+	)
 	for stone in active_stones:
 		if is_instance_valid(stone):
-			stone.linear_velocity -= active_input_velocity
+			stone.linear_velocity -= removable_velocity
 	active_input_velocity = Vector2.ZERO
+
+
+func _matching_input_velocity(current: float, commanded: float) -> float:
+	if commanded > 0.0:
+		return clampf(current, 0.0, commanded)
+	if commanded < 0.0:
+		return clampf(current, commanded, 0.0)
+	return 0.0
 
 
 func _average_active_velocity() -> Vector2:
