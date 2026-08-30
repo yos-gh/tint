@@ -15,8 +15,9 @@ stones along it.
 - A pulsing glow appears when a line is only one stone away from clearing.
 - Clearing stones higher in the field is riskier and awards a larger score
   multiplier, up to x16. The multiplier appears over each cleared line.
-- The translucent line near the top marks the height limit. The game ends when
-  settled stones remain above it for five continuous seconds.
+- The translucent line near the top marks the height limit. The area above it
+  glows red while the five-second countdown is active; the game ends if settled
+  stones remain above the line for the entire countdown.
 - A block remains controllable briefly after touching the floor or another
   block, then the next block appears.
 

@@ -954,6 +954,14 @@ func _update_game_over_state(delta: float) -> void:
 		_game_over()
 
 
+func _limit_warning_alpha() -> float:
+	if game_over_exposure <= 0.0:
+		return 0.0
+	var progress := clampf(game_over_exposure / GAME_OVER_GRACE_PERIOD, 0.0, 1.0)
+	var pulse := 0.5 + 0.5 * sin(game_over_exposure * 8.0)
+	return 0.10 + progress * 0.10 + pulse * 0.08
+
+
 func _game_over() -> void:
 	is_game_over = true
 	limit_label.visible = false
@@ -989,6 +997,29 @@ func _draw() -> void:
 		var x := lerpf(FIELD_LEFT, FIELD_RIGHT, float(index) / 24.0)
 		polygon.append(Vector2(x, _bowl_y(x)))
 	draw_colored_polygon(polygon, Color("101a2c"))
+
+	# When settled stones cross the height limit, tint the entire danger area.
+	# The pulse becomes brighter as the five-second grace period runs out.
+	var limit_warning_alpha := _limit_warning_alpha()
+	if limit_warning_alpha > 0.0:
+		draw_rect(
+			Rect2(
+				FIELD_LEFT + 3.0,
+				FIELD_TOP,
+				FIELD_RIGHT - FIELD_LEFT - 6.0,
+				GAME_OVER_LINE_Y - FIELD_TOP
+			),
+			Color(1.0, 0.10, 0.16, limit_warning_alpha)
+		)
+		draw_rect(
+			Rect2(
+				FIELD_LEFT + 5.0,
+				GAME_OVER_LINE_Y - 22.0,
+				FIELD_RIGHT - FIELD_LEFT - 10.0,
+				22.0
+			),
+			Color(1.0, 0.18, 0.24, limit_warning_alpha * 0.45)
+		)
 
 	for y in range(200, 801, 100):
 		if absf(float(y) - GAME_OVER_LINE_Y) > 1.0:
