@@ -38,26 +38,27 @@ func _run() -> void:
 	_set_key(KEY_S, true)
 	await physics_frame
 	await physics_frame
-	var dropping: bool = _average_velocity(tested_stones).y > game.SOFT_DROP_SPEED * 0.8
+	var drop_velocity: float = _average_velocity(tested_stones).y
+	var dropping: bool = drop_velocity > 0.0
 	_set_key(KEY_S, false)
 	await physics_frame
 	await physics_frame
-	var vertical_release: float = absf(_average_velocity(tested_stones).y)
+	var retained_drop_velocity: float = _average_velocity(tested_stones).y
 
 	if (
 		moving_right and dropping
 		and horizontal_release <= RELEASE_TOLERANCE
-		and vertical_release <= RELEASE_TOLERANCE
+		and retained_drop_velocity > 0.0
 	):
 		print(
-			"PASS: movement input stops without inertia; released velocity = (",
-			snappedf(horizontal_release, 0.01), ", ", snappedf(vertical_release, 0.01), ")"
+			"PASS: horizontal input stops on release while soft-drop momentum remains; values = (",
+			snappedf(horizontal_release, 0.01), ", ", snappedf(retained_drop_velocity, 0.01), ")"
 		)
 		quit(0)
 	else:
 		push_error(
-			"FAIL: input velocity persisted; move=%s drop=%s released=(%.2f, %.2f)"
-			% [moving_right, dropping, horizontal_release, vertical_release]
+			"FAIL: hybrid movement behavior is incorrect; move=%s drop=%s released=(%.2f, %.2f)"
+			% [moving_right, dropping, horizontal_release, retained_drop_velocity]
 		)
 		quit(1)
 

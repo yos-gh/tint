@@ -17,28 +17,23 @@ func _run() -> void:
 		stone.gravity_scale = 0.0
 		stone.linear_velocity = Vector2.ZERO
 
-	# Reproduce the lock-delay edge case from the recording: the floor has
-	# already stopped the stones, but the soft-drop command is still recorded.
-	game.active_input_velocity = Vector2(0.0, game.SOFT_DROP_SPEED)
-	game._remove_active_input_velocity()
-	var stopped_release_y: float = game._average_active_velocity().y
-
-	# In free fall, only the remaining downward command should be removed.
+	# Vertical motion is no longer recorded as removable input velocity. When
+	# lock delay removes horizontal control, an existing fall or collision
+	# response must therefore remain unchanged and cannot become upward recoil.
 	for stone in tested_stones:
-		stone.linear_velocity = Vector2(0.0, game.SOFT_DROP_SPEED * 0.75)
-	game.active_input_velocity = Vector2(0.0, game.SOFT_DROP_SPEED)
+		stone.linear_velocity = Vector2(game.MOVE_SPEED, 24.0)
+	game.active_input_velocity = Vector2(game.MOVE_SPEED, 0.0)
 	game._remove_active_input_velocity()
-	var moving_release_y: float = game._average_active_velocity().y
+	var released_velocity: Vector2 = game._average_active_velocity()
 
-	if stopped_release_y >= -0.01 and absf(moving_release_y) <= 0.01:
+	if absf(released_velocity.x) <= 0.01 and is_equal_approx(released_velocity.y, 24.0):
 		print(
-			"PASS: releasing soft drop cannot create upward rebound; velocities = ",
-			snappedf(stopped_release_y, 0.01), ", ", snappedf(moving_release_y, 0.01)
+			"PASS: locking removes horizontal input without altering vertical motion; velocity = ",
+			released_velocity
 		)
 		quit(0)
 	else:
 		push_error(
-			"FAIL: soft-drop removal created rebound; stopped=%.2f moving=%.2f"
-			% [stopped_release_y, moving_release_y]
+			"FAIL: locking altered vertical motion; velocity=%s" % released_velocity
 		)
 		quit(1)

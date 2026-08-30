@@ -19,7 +19,7 @@ const PAIR_HEIGHT_TOLERANCE := STONE_SIZE * 0.45
 const CLEAR_BAND_HALF_WIDTH := STONE_SIZE * 0.45
 
 const MOVE_SPEED := 230.0
-const SOFT_DROP_SPEED := 300.0
+const SOFT_DROP_FORCE := 2800.0
 const TARGET_ROTATION_SPEED := TAU # One full turn per second.
 const GAMEPAD_DEADZONE := 0.28
 const INPUT_MOVE_LEFT := "gamepad_move_left"
@@ -451,15 +451,10 @@ func _control_active_piece(delta: float) -> void:
 	if is_instance_valid(touch_stick):
 		drop_strength = maxf(drop_strength, maxf(touch_stick.value.y, 0.0))
 	drop_strength = clampf(drop_strength, 0.0, 1.0)
-	# RigidBody damping slightly attenuates the injected component between
-	# frames. Removing the original value can therefore leave a tiny reverse
-	# recoil. Cancel that shared recoil while preserving ordinary downward fall.
+	# RigidBody damping slightly attenuates the injected horizontal component
+	# between frames. Cancel any shared reverse recoil when movement is released.
 	if is_zero_approx(horizontal) and not is_zero_approx(previous_input_velocity.x):
 		_cancel_shared_velocity_axis(0, _average_active_velocity().x)
-	if is_zero_approx(drop_strength) and previous_input_velocity.y > 0.0:
-		var released_vertical_velocity := _average_active_velocity().y
-		if released_vertical_velocity < 0.0:
-			_cancel_shared_velocity_axis(1, released_vertical_velocity)
 	var rotate_dir := 0.0
 	if Input.is_key_pressed(KEY_M) or Input.is_action_pressed(INPUT_ROTATE_RIGHT):
 		rotate_dir += 1.0
@@ -498,14 +493,16 @@ func _control_active_piece(delta: float) -> void:
 			group["target_angular_velocity"] = 0.0
 		break
 
-	# Player movement is an explicit shared velocity, separate from gravity,
-	# collisions and the stones' relative rotational motion. Removing the prior
-	# frame's component before applying the current one prevents input inertia:
-	# releasing a control stops only the motion created by that control.
-	active_input_velocity = Vector2(horizontal * MOVE_SPEED, drop_strength * SOFT_DROP_SPEED)
+	# Horizontal movement is an explicit shared velocity, separate from gravity,
+	# collisions and the stones' relative rotational motion. Soft drop instead
+	# uses the original downward force: contact can absorb it naturally without
+	# a target velocity being injected again on every lock-delay frame.
+	active_input_velocity = Vector2(horizontal * MOVE_SPEED, 0.0)
 	for stone in active_stones:
 		if is_instance_valid(stone):
 			stone.linear_velocity += active_input_velocity
+			if drop_strength > 0.0:
+				stone.apply_central_force(Vector2.DOWN * SOFT_DROP_FORCE * drop_strength)
 
 	# Rotation must not become translational lift. Remove only the shared upward
 	# velocity of the piece; relative velocities that form the rotation remain.
