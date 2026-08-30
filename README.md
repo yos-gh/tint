@@ -22,6 +22,8 @@ stones along it.
 
 Rotations are continuous rather than locked to 90-degree steps. The stones are
 elastic, but each block will try to retain its original shape.
+Horizontal movement and faster dropping apply only while their controls are
+held; releasing them removes their added momentum.
 
 ## Controls
 

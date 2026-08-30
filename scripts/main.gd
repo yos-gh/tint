@@ -18,8 +18,8 @@ const GAME_OVER_LINE_Y := FIELD_TOP + 105.0
 const PAIR_HEIGHT_TOLERANCE := STONE_SIZE * 0.45
 const CLEAR_BAND_HALF_WIDTH := STONE_SIZE * 0.45
 
-const MOVE_FORCE := 2750.0
-const SOFT_DROP_FORCE := 2800.0
+const MOVE_SPEED := 230.0
+const SOFT_DROP_SPEED := 300.0
 const TARGET_ROTATION_SPEED := TAU # One full turn per second.
 const GAMEPAD_DEADZONE := 0.28
 const INPUT_MOVE_LEFT := "gamepad_move_left"
@@ -86,6 +86,7 @@ var game_over_exposure := 0.0
 var elimination_cooldown := 0.0
 var near_clear_cooldown := 0.0
 var flash_lines: Array[Dictionary] = []
+var active_input_velocity := Vector2.ZERO
 
 var score_label: Label
 var status_label: Label
@@ -424,7 +425,10 @@ func _physics_process(delta: float) -> void:
 
 func _control_active_piece(delta: float) -> void:
 	if active_stones.is_empty():
+		active_input_velocity = Vector2.ZERO
 		return
+	var previous_input_velocity := active_input_velocity
+	_remove_active_input_velocity()
 	var horizontal := Input.get_axis(INPUT_MOVE_LEFT, INPUT_MOVE_RIGHT)
 	if is_instance_valid(touch_stick):
 		horizontal += touch_stick.value.x
@@ -446,6 +450,16 @@ func _control_active_piece(delta: float) -> void:
 		drop_strength = 1.0
 	if is_instance_valid(touch_stick):
 		drop_strength = maxf(drop_strength, maxf(touch_stick.value.y, 0.0))
+	drop_strength = clampf(drop_strength, 0.0, 1.0)
+	# RigidBody damping slightly attenuates the injected component between
+	# frames. Removing the original value can therefore leave a tiny reverse
+	# recoil. Cancel that shared recoil while preserving ordinary downward fall.
+	if is_zero_approx(horizontal) and not is_zero_approx(previous_input_velocity.x):
+		_cancel_shared_velocity_axis(0, _average_active_velocity().x)
+	if is_zero_approx(drop_strength) and previous_input_velocity.y > 0.0:
+		var released_vertical_velocity := _average_active_velocity().y
+		if released_vertical_velocity < 0.0:
+			_cancel_shared_velocity_axis(1, released_vertical_velocity)
 	var rotate_dir := 0.0
 	if Input.is_key_pressed(KEY_M) or Input.is_action_pressed(INPUT_ROTATE_RIGHT):
 		rotate_dir += 1.0
@@ -484,10 +498,14 @@ func _control_active_piece(delta: float) -> void:
 			group["target_angular_velocity"] = 0.0
 		break
 
+	# Player movement is an explicit shared velocity, separate from gravity,
+	# collisions and the stones' relative rotational motion. Removing the prior
+	# frame's component before applying the current one prevents input inertia:
+	# releasing a control stops only the motion created by that control.
+	active_input_velocity = Vector2(horizontal * MOVE_SPEED, drop_strength * SOFT_DROP_SPEED)
 	for stone in active_stones:
-		if not is_instance_valid(stone):
-			continue
-		stone.apply_central_force(Vector2(horizontal * MOVE_FORCE, SOFT_DROP_FORCE * drop_strength))
+		if is_instance_valid(stone):
+			stone.linear_velocity += active_input_velocity
 
 	# Rotation must not become translational lift. Remove only the shared upward
 	# velocity of the piece; relative velocities that form the rotation remain.
@@ -503,6 +521,31 @@ func _control_active_piece(delta: float) -> void:
 			for stone in active_stones:
 				if is_instance_valid(stone):
 					stone.linear_velocity.y -= average_vertical_velocity
+
+
+func _remove_active_input_velocity() -> void:
+	if active_input_velocity == Vector2.ZERO:
+		return
+	for stone in active_stones:
+		if is_instance_valid(stone):
+			stone.linear_velocity -= active_input_velocity
+	active_input_velocity = Vector2.ZERO
+
+
+func _average_active_velocity() -> Vector2:
+	var average := Vector2.ZERO
+	var count := 0
+	for stone in active_stones:
+		if is_instance_valid(stone):
+			average += stone.linear_velocity
+			count += 1
+	return average / maxf(float(count), 1.0)
+
+
+func _cancel_shared_velocity_axis(axis: int, velocity: float) -> void:
+	for stone in active_stones:
+		if is_instance_valid(stone):
+			stone.linear_velocity[axis] -= velocity
 
 
 func _shape_error(group: Dictionary) -> float:
@@ -563,6 +606,7 @@ func _update_active_piece(delta: float) -> void:
 		settle_age = 0.0
 
 	if settle_age >= LOCK_DELAY:
+		_remove_active_input_velocity()
 		active_group_id = -1
 		active_stones.clear()
 		settle_age = 0.0
@@ -578,6 +622,7 @@ func _spawn_piece(shape_override: String = "") -> void:
 	active_group_id = group_counter
 	active_age = 0.0
 	settle_age = 0.0
+	active_input_velocity = Vector2.ZERO
 	var names := SHAPES.keys()
 	var shape_name: String = shape_override if SHAPES.has(shape_override) else names[randi() % names.size()]
 	var offsets: Array = SHAPES[shape_name]
