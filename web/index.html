@@ -1,185 +1,85 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#09101e">
-  <meta name="description" content="Play TINT, a physics-driven falling-block puzzle where connected stones bend, bounce, and pile up.">
+  <meta name="theme-color" content="#111111">
+  <meta name="description" content="Play TINT in your browser. A physics-driven falling-block puzzle where connected stones bend, bounce, and pile up.">
   <title>TINT — TINT is not Tetris</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --background: #09101e;
-      --surface: #101a2c;
-      --line: #293956;
-      --text: #e8efff;
-      --muted: #91a0c5;
-      --accent: #55d6be;
-      --gold: #ffd166;
-    }
-
-    * { box-sizing: border-box; }
-
-    html { background: var(--background); }
-
-    body {
-      margin: 0;
-      color: var(--text);
-      background:
-        radial-gradient(circle at 50% 8%, #172543 0, transparent 36rem),
-        var(--background);
-      font-family: Inter, "Segoe UI", "Yu Gothic UI", sans-serif;
-      line-height: 1.65;
-    }
-
-    a { color: var(--accent); }
-    a:hover { color: #b8fff1; }
-
-    .topbar {
-      min-height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 10px max(18px, calc((100vw - 1120px) / 2));
-      border-bottom: 1px solid var(--line);
-      background: rgb(9 16 30 / 82%);
-      backdrop-filter: blur(12px);
-    }
-
-    .brand { display: flex; align-items: baseline; gap: 12px; }
-    .brand h1 { margin: 0; font-size: 1.05rem; letter-spacing: .24em; }
-    .brand span { color: var(--muted); font-size: .76rem; }
-
-    .topbar nav { display: flex; gap: 18px; font-size: .82rem; }
-
-    .game-wrap {
-      width: min(calc(100% - 32px), 720px);
-      margin: 0 auto;
-      padding: 20px 0 28px;
-    }
-
-    .game-shell {
-      width: 100%;
-      aspect-ratio: 3 / 4;
-      overflow: hidden;
-      border: 1px solid #35496d;
-      border-radius: 14px;
-      background: #090c13;
-      box-shadow: 0 24px 80px rgb(0 0 0 / 44%);
-    }
-
-    .game-frame { display: block; width: 100%; height: 100%; border: 0; }
-
-    main { border-top: 1px solid var(--line); background: rgb(9 16 30 / 74%); }
-
-    .content {
-      width: min(calc(100% - 36px), 920px);
-      margin: 0 auto;
-      padding: 38px 0 58px;
-    }
-
-    .intro { max-width: 700px; margin: 0 0 34px; color: var(--muted); }
-
-    .sections {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0 42px;
-    }
-
-    section { padding: 22px 0; border-top: 1px solid var(--line); }
-    section h2 { margin: 0 0 12px; color: var(--accent); font-size: .9rem; }
-    section p, section ul { margin: 0; color: var(--muted); font-size: .9rem; }
-    section ul { padding-left: 1.2rem; }
-    section li + li { margin-top: 5px; }
-    code { color: var(--gold); font-family: "Cascadia Mono", Consolas, monospace; }
-
-    footer {
-      padding: 21px 18px 32px;
-      border-top: 1px solid var(--line);
-      color: var(--muted);
-      font-size: .78rem;
-      text-align: center;
-    }
-
-    @media (max-width: 680px) {
-      .topbar { align-items: flex-start; flex-direction: column; gap: 3px; }
-      .brand span { display: none; }
-      .game-wrap { width: 100%; padding: 0 0 20px; }
-      .game-shell { border-left: 0; border-right: 0; border-radius: 0; }
-      .sections { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="site.css">
+  <style>:root { --accent: #55d6be; --game-ratio: 3 / 4; --game-width: 720px; }</style>
 </head>
 <body>
+  <a class="skip" href="#guide">Skip to the guide</a>
   <header class="topbar">
-    <div class="brand"><h1>TINT</h1><span>TINT is not Tetris</span></div>
+    <div class="brand"><h1>TINT</h1><p>TINT is not Tetris</p></div>
     <nav aria-label="Project links">
+      <a href="#guide">How to play</a>
       <a href="https://github.com/yos-gh/tint">Source</a>
     </nav>
   </header>
 
   <div class="game-wrap">
     <div class="game-shell">
-      <iframe
-        class="game-frame"
-        src="game/index.html"
-        title="TINT game"
-        allow="autoplay; fullscreen; gamepad"
-        allowfullscreen
-      ></iframe>
+      <iframe src="game/index.html" title="TINT game" allow="autoplay; fullscreen; gamepad" allowfullscreen></iframe>
+    </div>
+    <div class="game-note">
+      <p>Keyboard, gamepad, or touch · Click or tap the game to start.</p>
+      <a href="game/index.html">Open the game on its own ↗</a>
     </div>
   </div>
 
-  <main>
+  <main id="guide">
     <div class="content">
       <p class="intro">
-        TINT is a physics-driven falling-block puzzle about piling up stones connected by elastic cords.
-        Pieces bend, bounce, and rotate freely. Connect both walls with stones at roughly the same height
-        to clear the stones along that line.
+        TINT is a physics-driven falling-block puzzle. Familiar tetromino shapes are built from soft,
+        connected stones, so every piece bends, bounces, and rotates freely.
       </p>
 
-      <div class="sections">
+      <div class="columns">
+        <section>
+          <h2>How to play</h2>
+          <h3>Goal</h3>
+          <p>Connect both walls with stones at roughly the same height to clear that line. A line one stone away from clearing glows gold.</p>
+          <h3>Scoring</h3>
+          <p>Clearing higher in the field earns a larger multiplier, from x1 near the floor up to x16 near the height limit.</p>
+          <h3>Game over</h3>
+          <p>The game ends when the pile stays above the height limit for five continuous seconds.</p>
+        </section>
+
         <section>
           <h2>Controls</h2>
-          <ul>
-            <li>Move: <code>A / D</code> or left/right arrows</li>
-            <li>Soft drop: <code>S</code> or down arrow</li>
-            <li>Rotate counterclockwise: <code>N</code></li>
-            <li>Rotate clockwise: <code>M</code></li>
-            <li>Restart after game over: <code>R</code></li>
-            <li>Touchscreen: left analog stick and right-side rotation buttons</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2>Clear Rule</h2>
-          <p>
-            A line clears when stones touch both walls at roughly the same height and enough stones fill
-            the space around the segment between them. A line that needs only one more stone glows gold.
-          </p>
-        </section>
-
-        <section>
-          <h2>Scoring</h2>
-          <p>
-            Clearing higher in the field earns a larger risk multiplier: x1 near the floor and up to x16
-            near the game-over limit. The pile must stay above that limit for five continuous seconds to
-            end the game.
-          </p>
-        </section>
-
-        <section>
-          <h2>Prototype</h2>
-          <p>
-            This prototype is built with Godot 4. Physics, difficulty, and clearing conditions may continue
-            to change during development.
-          </p>
+          <h3>Keyboard</h3>
+          <dl class="controls">
+            <div><dt>Move</dt><dd><kbd>A</kbd> <kbd>D</kbd> / arrow keys</dd></div>
+            <div><dt>Soft drop</dt><dd><kbd>S</kbd> / down arrow</dd></div>
+            <div><dt>Rotate left / right</dt><dd><kbd>N</kbd> / <kbd>M</kbd></dd></div>
+            <div><dt>Restart</dt><dd><kbd>R</kbd></dd></div>
+          </dl>
+          <h3>Gamepad</h3>
+          <dl class="controls">
+            <div><dt>Move / Soft drop</dt><dd>D-pad / left stick</dd></div>
+            <div><dt>Rotate left / right</dt><dd>A or X / B or Y</dd></div>
+          </dl>
+          <h3>Touch</h3>
+          <dl class="controls">
+            <div><dt>Move / Soft drop</dt><dd>Left virtual stick</dd></div>
+            <div><dt>Rotate</dt><dd>Right-side buttons</dd></div>
+            <div><dt>Restart</dt><dd>Tap after game over</dd></div>
+          </dl>
         </section>
       </div>
+
+      <section>
+        <h2>About</h2>
+        <p>Physics, difficulty, and clearing conditions may still change during development.</p>
+      </section>
     </div>
   </main>
 
-  <footer>TINT — browser prototype</footer>
+  <footer>
+    <span>TINT · Built with Godot 4 · Prototype</span>
+    <nav aria-label="Footer links"><a href="https://github.com/yos-gh/tint">Source</a><a href="https://github.com/yos-gh/tint/blob/main/LICENSE">License</a></nav>
+  </footer>
 </body>
 </html>
